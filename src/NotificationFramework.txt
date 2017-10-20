@@ -1,0 +1,105 @@
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+/**
+ * Interface for the NotificationSink. Methods visible to the Server.
+ */
+public interface NotificationSinkInterface extends Remote {
+
+    void update(Notification notification) throws RemoteException;
+}
+
+import java.rmi.*;
+import java.rmi.server.UnicastRemoteObject;
+
+/**
+ * Receives notifications
+ */
+public class NotificationSink extends UnicastRemoteObject implements NotificationSinkInterface {
+
+    private Client client;
+
+    NotificationSink(Client client) throws RemoteException {
+        super();
+        this.client = client;
+    }
+
+    @Override
+    //Used by server to send a notification containing a chat update to the client
+    public void update(Notification notification) throws RemoteException {
+        client.update(notification.getAuthor(), notification.getMessage());
+    }
+}
+
+import java.rmi.*;
+
+/**
+ * Interface for the NotificationSource. Methods visible to the Client.
+ */
+public interface NotificationSourceInterface extends Remote {
+
+    void sendMessage(Notification notification) throws RemoteException;
+    void subscribe(NotificationSinkInterface sinkInterface) throws RemoteException;
+    void createNewSink(String binding, NotificationSinkInterface sinkInterface) throws RemoteException;
+}
+
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+
+/**
+ * Sends notifications when events happen
+ */
+public class NotificationSource extends UnicastRemoteObject implements NotificationSourceInterface {
+
+    private Server server;
+
+    NotificationSource(Server server) throws RemoteException {
+        super();
+        this.server = server;
+    }
+
+    @Override
+    //Used by clients to send a message to the chatroom
+    public void sendMessage(Notification notification) throws RemoteException {
+        server.updateAllSinks(notification);
+    }
+
+    @Override
+    //Used by clients to subscribe to a chatroom
+    public void subscribe(NotificationSinkInterface sinkInterface) throws RemoteException {
+        server.addSink(sinkInterface);
+    }
+
+    @Override
+    //Used by clients to create a new chatroom
+    public void createNewSink(String binding, NotificationSinkInterface sinkInterface) throws RemoteException {
+        Server newServer = new Server(binding);
+        newServer.addSink(sinkInterface);
+    }
+
+
+}
+
+import java.io.Serializable;
+
+/**
+ * Models a message from source to sink about a message update
+ */
+public class Notification implements Serializable {
+
+    private String author;
+    private String message;
+
+    public Notification(String author, String message) {
+        this.author = author;
+        this.message = message;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+}
